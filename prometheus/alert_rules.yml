@@ -1,0 +1,52 @@
+groups:
+  - name: skin_cancer_api_alerts
+    rules:
+      # High error rate
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate on Skin Cancer API"
+          description: "Error rate is above 5% for more than 2 minutes."
+
+      # High latency
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(skin_cancer_prediction_latency_seconds_bucket[5m])) > 5
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High prediction latency"
+          description: "95th percentile latency is above 5 seconds."
+
+      # Low confidence predictions spike
+      - alert: LowConfidencePredictions
+        expr: rate(skin_cancer_low_confidence_predictions_total[10m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High rate of low-confidence predictions"
+          description: "Many predictions are below confidence threshold - possible data drift."
+
+      # API down
+      - alert: APIDown
+        expr: up{job="skin-cancer-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Skin Cancer API is down"
+          description: "The prediction API has been unreachable for more than 1 minute."
+
+      # High malignant prediction rate (unusual pattern)
+      - alert: HighMalignantRate
+        expr: rate(skin_cancer_malignant_predictions_total[30m]) / rate(skin_cancer_predictions_total[30m]) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Unusually high malignant prediction rate"
+          description: "More than 50% of predictions are malignant - possible data quality issue."
