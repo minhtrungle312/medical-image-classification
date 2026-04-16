@@ -13,8 +13,7 @@ venv/
 .env
 
 # Data & models (large files)
-data/raw/
-data/processed/
+data/
 models/saved/
 models/*.pth
 models/*.pt

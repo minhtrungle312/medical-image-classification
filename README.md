@@ -127,7 +127,7 @@ pip3 install -r requirements.txt
 
 ---
 
-## Dataset Setup - Included in git src code
+## Dataset Setup
 
 ### Option 1: Auto-download via kagglehub
 ```bash
