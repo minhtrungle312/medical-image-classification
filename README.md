@@ -114,7 +114,7 @@ All models use:
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_ORG/medical-image-classification.git
+git clone https://github.com/tmt2504/medical-image-classification.git
 cd medical-image-classification
 
 # Create virtual environment
