@@ -111,35 +111,17 @@ def download_dataset(data_dir: str = "data") -> str:
     return path
 
 
-def load_isic_dataset(data_dir: str) -> Tuple[list, list]:
-    """
-    Load ISIC dataset from a folder-based directory structure.
-
-    Expected structure (Kaggle: nodoubttome/skin-cancer9-classesisic):
-        data_dir/
-            Skin cancer ISIC The International Skin Imaging Collaboration/
-                Train/
-                    actinic keratosis/
-                    basal cell carcinoma/
-                    ...
-                Test/
-                    actinic keratosis/
-                    ...
-
-    Falls back to flat Train/Test structure if the nested folder exists directly.
-
-    Returns:
-        image_paths: list of image file paths
-        labels: list of integer labels
-    """
+def _resolve_data_path(data_dir: str) -> Path:
+    """Resolve the dataset root, handling nested Kaggle structure."""
     data_path = Path(data_dir)
-
-    # Auto-detect nested Kaggle structure
     nested = data_path / "Skin cancer ISIC The International Skin Imaging Collaboration"
     if nested.exists():
         data_path = nested
+    return data_path
 
-    # Locate Train and/or Test directories (case-insensitive search)
+
+def _find_split_dirs(data_path: Path) -> Tuple:
+    """Locate Train and Test directories."""
     train_dir = None
     test_dir = None
     for child in data_path.iterdir():
@@ -153,28 +135,47 @@ def load_isic_dataset(data_dir: str) -> Tuple[list, list]:
             f"No Train/ or Test/ directory found in {data_path}. "
             f"Contents: {[c.name for c in data_path.iterdir()]}"
         )
+    return train_dir, test_dir
+
+
+def _load_folder(folder: Path) -> Tuple[list, list]:
+    """Load images and labels from a single split folder (Train/ or Test/)."""
+    class_to_idx = {name.lower(): idx for idx, name in enumerate(CLASS_NAMES)}
+    image_paths = []
+    labels = []
+    for class_folder in sorted(folder.iterdir()):
+        if not class_folder.is_dir():
+            continue
+        class_name = class_folder.name.lower().strip()
+        if class_name not in class_to_idx:
+            logger.warning(f"Unknown class folder '{class_folder.name}', skipping")
+            continue
+        label = class_to_idx[class_name]
+        for img_file in class_folder.iterdir():
+            if img_file.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp"}:
+                image_paths.append(str(img_file))
+                labels.append(label)
+    return image_paths, labels
+
+
+def load_isic_dataset(data_dir: str) -> Tuple[list, list]:
+    """
+    Load all images from the ISIC dataset (Train + Test combined).
+
+    Returns:
+        image_paths, labels
+    """
+    data_path = _resolve_data_path(data_dir)
+    train_dir, test_dir = _find_split_dirs(data_path)
 
     image_paths = []
     labels = []
-
-    # Build class-to-index mapping from CLASS_NAMES
-    class_to_idx = {name.lower(): idx for idx, name in enumerate(CLASS_NAMES)}
-
     for split_dir in [train_dir, test_dir]:
         if split_dir is None:
             continue
-        for class_folder in sorted(split_dir.iterdir()):
-            if not class_folder.is_dir():
-                continue
-            class_name = class_folder.name.lower().strip()
-            if class_name not in class_to_idx:
-                logger.warning(f"Unknown class folder '{class_folder.name}', skipping")
-                continue
-            label = class_to_idx[class_name]
-            for img_file in class_folder.iterdir():
-                if img_file.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp"}:
-                    image_paths.append(str(img_file))
-                    labels.append(label)
+        paths, lbls = _load_folder(split_dir)
+        image_paths.extend(paths)
+        labels.extend(lbls)
 
     if len(image_paths) == 0:
         raise FileNotFoundError(f"No images found in {data_path}")
@@ -183,40 +184,47 @@ def load_isic_dataset(data_dir: str) -> Tuple[list, list]:
     return image_paths, labels
 
 
+def load_train_test_split(data_dir: str) -> Dict[str, Tuple[list, list]]:
+    """
+    Load Train/ and Test/ folders separately.
+
+    Returns dict with 'train_all' and 'test' keys.
+    """
+    data_path = _resolve_data_path(data_dir)
+    train_dir, test_dir = _find_split_dirs(data_path)
+
+    result = {}
+    if train_dir:
+        result["train_all"] = _load_folder(train_dir)
+        logger.info(f"Train folder: {len(result['train_all'][0])} images")
+    if test_dir:
+        result["test"] = _load_folder(test_dir)
+        logger.info(f"Test folder: {len(result['test'][0])} images")
+    return result
+
+
 def split_dataset(
     image_paths: list,
     labels: list,
-    test_size: float = 0.15,
     val_size: float = 0.15,
     random_state: int = 42,
 ) -> Dict[str, Tuple[list, list]]:
-    """Split dataset into train/validation/test sets with stratification."""
-    # First split: train+val vs test
-    train_val_paths, test_paths, train_val_labels, test_labels = train_test_split(
-        image_paths, labels,
-        test_size=test_size,
-        stratify=labels,
-        random_state=random_state,
-    )
-
-    # Second split: train vs val
-    val_fraction = val_size / (1 - test_size)
+    """Split a set of images into train/val with stratification."""
     train_paths, val_paths, train_labels, val_labels = train_test_split(
-        train_val_paths, train_val_labels,
-        test_size=val_fraction,
-        stratify=train_val_labels,
+        image_paths, labels,
+        test_size=val_size,
+        stratify=labels,
         random_state=random_state,
     )
 
     logger.info(
         f"Split sizes - Train: {len(train_paths)}, "
-        f"Val: {len(val_paths)}, Test: {len(test_paths)}"
+        f"Val: {len(val_paths)}"
     )
 
     return {
         "train": (train_paths, train_labels),
         "val": (val_paths, val_labels),
-        "test": (test_paths, test_labels),
     }
 
 
@@ -255,12 +263,13 @@ def create_data_loaders(
     Returns:
         train_loader, val_loader, test_loader, class_weights
     """
-    image_paths, labels = load_isic_dataset(data_dir)
-    splits = split_dataset(image_paths, labels)
+    data = load_train_test_split(data_dir)
+    train_all_paths, train_all_labels = data["train_all"]
+    splits = split_dataset(train_all_paths, train_all_labels)
 
     train_paths, train_labels = splits["train"]
     val_paths, val_labels = splits["val"]
-    test_paths, test_labels = splits["test"]
+    test_paths, test_labels = data["test"]
 
     # Compute class weights from training set
     class_weights = compute_class_weights(train_labels)
