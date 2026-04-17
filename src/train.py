@@ -287,6 +287,11 @@ def train_model(
                 }, model_path)
                 logger.info(f"Saved best model to {model_path}")
 
+            # Early stopping check
+            if early_stopping(val_metrics["loss"]):
+                logger.info(f"Early stopping triggered at epoch {epoch}")
+                break
+
         # Log best metrics
         mlflow.log_metrics({
             f"best_{k}": v for k, v in best_val_metrics.items()
