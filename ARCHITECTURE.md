@@ -94,7 +94,7 @@
 Raw ISIC Images (JPEG) ──────────────────────────────────────────────▶
     │
     ├─▶ Load image paths + CSV labels
-    ├─▶ Stratified split (70% train / 15% val / 15% test)
+    ├─▶ Stratified split (85% train / 15% val)
     ├─▶ Training augmentation:
     │     - Random crop (256 → 224)
     │     - Horizontal/vertical flip

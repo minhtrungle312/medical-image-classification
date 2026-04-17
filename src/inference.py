@@ -29,7 +29,14 @@ class SkinCancerPredictor:
         device: Optional[torch.device] = None,
     ):
         self.model_name = model_name
-        self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if device:
+            self.device = device
+        elif torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        elif torch.backends.mps.is_available():
+            self.device = torch.device("mps")
+        else:
+            self.device = torch.device("cpu")
         self.transform = get_transforms("val")
         self.class_names = CLASS_NAMES
 
