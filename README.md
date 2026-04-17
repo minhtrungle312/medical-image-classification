@@ -119,7 +119,14 @@ cd medical-image-classification
 
 # Create virtual environment
 python3 -m venv venv
+
+# Activate virtual environment
+# On Linux/macOS:
 source venv/bin/activate
+# On Windows PowerShell:
+.\venv\Scripts\Activate.ps1
+# On Windows Command Prompt (CMD):
+# venv\Scripts\activate.bat
 
 # Install dependencies
 pip3 install -r requirements.txt
@@ -131,8 +138,12 @@ pip3 install -r requirements.txt
 
 ### Option 1: Auto-download via kagglehub
 ```bash
+# On Linux/macOS:
 python3 -c "from src.data_pipeline import download_dataset; download_dataset()"
+# On Windows:
+python -c "from src.data_pipeline import download_dataset; download_dataset()"
 ```
+This will automatically download and set up the ISIC dataset in the `data/` directory.
 
 ### Option 2: Manual download
 1. Install kagglehub: `pip install kagglehub`

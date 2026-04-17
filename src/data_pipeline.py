@@ -98,17 +98,49 @@ def get_transforms(split: str = "train") -> transforms.Compose:
 
 def download_dataset(data_dir: str = "data") -> str:
     """
-    Download the ISIC Skin Cancer dataset from Kaggle using kagglehub.
+    Download the ISIC Skin Cancer dataset from Kaggle using kagglehub
+    and set it up in the specified data directory.
+
+    Args:
+        data_dir: Directory to set up the dataset in (default: "data")
 
     Returns:
-        Path to the downloaded dataset root directory.
+        Path to the dataset root directory in data_dir.
     """
     import kagglehub
+    import shutil
 
     logger.info("Downloading ISIC Skin Cancer dataset from Kaggle...")
-    path = kagglehub.dataset_download("nodoubttome/skin-cancer9-classesisic")
-    logger.info(f"Dataset downloaded to: {path}")
-    return path
+    downloaded_path = kagglehub.dataset_download("nodoubttome/skin-cancer9-classesisic")
+    logger.info(f"Dataset downloaded to: {downloaded_path}")
+
+    # Set up in data directory
+    data_path = Path(data_dir)
+    data_path.mkdir(parents=True, exist_ok=True)
+
+    # Check if already set up
+    expected_nested = data_path / "Skin cancer ISIC The International Skin Imaging Collaboration"
+    if expected_nested.exists():
+        logger.info(f"Dataset already exists in {expected_nested}")
+        return str(expected_nested)
+
+    # Copy the downloaded dataset to data directory
+    downloaded_nested = Path(downloaded_path) / "Skin cancer ISIC The International Skin Imaging Collaboration"
+    if downloaded_nested.exists():
+        logger.info(f"Copying dataset to {data_path}...")
+        shutil.copytree(downloaded_nested, expected_nested)
+        logger.info(f"Dataset set up successfully in {expected_nested}")
+        return str(expected_nested)
+    else:
+        # Fallback: copy the whole downloaded directory
+        logger.warning(f"Expected nested structure not found, copying entire download to {data_path}")
+        for item in Path(downloaded_path).iterdir():
+            dest = data_path / item.name
+            if item.is_dir():
+                shutil.copytree(item, dest)
+            else:
+                shutil.copy2(item, dest)
+        return str(data_path)
 
 
 def _resolve_data_path(data_dir: str) -> Path:
