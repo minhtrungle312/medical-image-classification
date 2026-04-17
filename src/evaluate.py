@@ -23,6 +23,7 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
     f1_score,
+    fbeta_score,
     roc_auc_score,
     confusion_matrix,
     classification_report,
@@ -87,9 +88,11 @@ def compute_metrics(
         "precision_macro": precision_score(labels, preds, average="macro", zero_division=0),
         "recall_macro": recall_score(labels, preds, average="macro", zero_division=0),
         "f1_macro": f1_score(labels, preds, average="macro", zero_division=0),
+        "f2_macro": fbeta_score(labels, preds, beta=2, average="macro", zero_division=0),
         "precision_weighted": precision_score(labels, preds, average="weighted", zero_division=0),
         "recall_weighted": recall_score(labels, preds, average="weighted", zero_division=0),
         "f1_weighted": f1_score(labels, preds, average="weighted", zero_division=0),
+        "f2_weighted": fbeta_score(labels, preds, beta=2, average="weighted", zero_division=0),
     }
 
     # ROC-AUC (One-vs-Rest)

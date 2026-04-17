@@ -22,7 +22,7 @@ from torch.utils.data import DataLoader
 import mlflow
 import mlflow.pytorch
 import numpy as np
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, fbeta_score
 
 from src.data_pipeline import create_data_loaders, NUM_CLASSES
 from src.models.custom_cnn import CustomCNN
@@ -138,6 +138,7 @@ def validate(
         "precision": precision_score(all_labels, all_preds, average="macro", zero_division=0),
         "recall": recall_score(all_labels, all_preds, average="macro", zero_division=0),
         "f1": f1_score(all_labels, all_preds, average="macro", zero_division=0),
+        "f2": fbeta_score(all_labels, all_preds, beta=2, average="macro", zero_division=0),
     }
 
     return metrics
@@ -260,6 +261,7 @@ def train_model(
                 "val_precision": val_metrics["precision"],
                 "val_recall": val_metrics["recall"],
                 "val_f1": val_metrics["f1"],
+                "val_f2": val_metrics["f2"],
                 "epoch_time": epoch_time,
                 "learning_rate": optimizer.param_groups[0]["lr"],
             }, step=epoch)
@@ -270,7 +272,8 @@ def train_model(
                 f"Val Loss: {val_metrics['loss']:.4f}, "
                 f"Val Acc: {val_metrics['accuracy']:.4f}, "
                 f"Val Recall: {val_metrics['recall']:.4f}, "
-                f"Val F1: {val_metrics['f1']:.4f}"
+                f"Val F1: {val_metrics['f1']:.4f}, "
+                f"Val F2: {val_metrics['f2']:.4f}"
             )
 
             # Save best model
