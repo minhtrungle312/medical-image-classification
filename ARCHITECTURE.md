@@ -9,14 +9,14 @@
 └─────────────────────┬───────────────────────────────────────────────┘
                       │ HTTP POST /predict (image)
                       ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                      FASTAPI REST API                               │
+┌────────────────────────────────────────────────────────────────────┐
+│                      FASTAPI REST API                              │
 │  ┌─────────────┐  ┌──────────────┐  ┌───────────────────────────┐  │
-│  │  /predict    │  │  /health     │  │  /metrics (Prometheus)    │  │
-│  │  /classes    │  │  /docs       │  │                           │  │
+│  │  /predict   │  │  /health     │  │  /metrics (Prometheus)    │  │
+│  │  /classes   │  │  /docs       │  │                           │  │
 │  └──────┬──────┘  └──────────────┘  └───────────────────────────┘  │
-│         │                                                           │
-│         ▼                                                           │
+│         │                                                          │
+│         ▼                                                          │
 │  ┌──────────────────────────┐                                      │
 │  │  INFERENCE ENGINE        │                                      │
 │  │  - Image preprocessing   │                                      │
@@ -24,21 +24,21 @@
 │  │  - Post-processing       │                                      │
 │  │  - Risk assessment       │                                      │
 │  └──────────┬───────────────┘                                      │
-│             │                                                       │
-│             ▼                                                       │
+│             │                                                      │
+│             ▼                                                      │
 │  ┌──────────────────────────┐                                      │
 │  │  TRAINED MODEL (.pth)    │                                      │
 │  │  (EfficientNet-B0)       │                                      │
 │  └──────────────────────────┘                                      │
-└─────────────────────────────────────────────────────────────────────┘
+└────────────────────────────────────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     MONITORING STACK                                │
-│  ┌────────────┐    ┌────────────┐    ┌────────────────────────┐    │
-│  │ Prometheus  │───▶│  Grafana   │    │  Alerting Rules        │    │
-│  │ (metrics)   │    │ (dashboard)│    │  (error/latency/drift) │    │
-│  └────────────┘    └────────────┘    └────────────────────────┘    │
+│  ┌────────────┐    ┌────────────┐    ┌────────────────────────┐     │
+│  │ Prometheus │───▶│  Grafana   │    │  Alerting Rules        │     │
+│  │ (metrics)  │    │ (dashboard)│    │  (error/latency/drift) │     │
+│  └────────────┘    └────────────┘    └────────────────────────┘     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -46,44 +46,44 @@
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────────────┐
-│  ISIC Dataset │────▶│ Data Pipeline │────▶│ Preprocessed Data    │
-│  (raw images) │     │  - Scan dirs  │     │ - train/val/test     │
-│               │     │  - Split      │     │ - augmented          │
-│               │     │  - Augment    │     │ - weighted sampling  │
+│ ISIC Dataset │────▶│ Data Pipeline│────▶│ Preprocessed Data    │
+│ (raw images) │     │  - Scan dirs │     │ - train/val/test     │
+│              │     │  - Split     │     │ - augmented          │
+│              │     │  - Augment   │     │ - weighted sampling  │
 └──────────────┘     └──────────────┘     └──────────┬───────────┘
-                                                      │
-                        ┌─────────────────────────────┘
+                                                     │
+                        ┌────────────────────────────┘
                         ▼
               ┌──────────────────┐
-              │  MODEL TRAINING   │
+              │  MODEL TRAINING  │
               │  ┌──────────────┐│
               │  │ Custom CNN   ││
               │  │ ResNet50     ││  ──▶  MLflow Tracking
               │  │ EfficientNet ││       (params, metrics,
-              │  │ ViT-B/16    ││        artifacts)
+              │  │ ViT-B/16     ││        artifacts)
               │  └──────────────┘│
-              │  - Weighted loss  │
-              │  - Adam optimizer │
-              │  - Early stopping │
+              │  - Weighted loss │
+              │  - Adam optimizer│
+              │  - Early stopping│
               └────────┬─────────┘
                        │
                        ▼
               ┌──────────────────┐
-              │  EVALUATION       │
-              │  - Accuracy       │
-              │  - Precision      │
-              │  - Recall ★       │
-              │  - F1-Score       │
-              │  - ROC-AUC        │
-              │  - Confusion Mat. │
-              │  - ROC Curves     │
+              │  EVALUATION      │
+              │  - Accuracy      │
+              │  - Precision     │
+              │  - Recall ★      │
+              │  - F1-Score      │
+              │  - ROC-AUC       │
+              │  - Confusion Mat.│
+              │  - ROC Curves    │
               └────────┬─────────┘
                        │
                        ▼
               ┌──────────────────┐
-              │  MODEL COMPARISON │
-              │  & SELECTION      │──▶ Best model deployed
-              │  (recall-focused) │
+              │  MODEL COMPARISON│
+              │  & SELECTION     │──▶ Best model deployed
+              │  (recall-focused)│
               └──────────────────┘
 ```
 

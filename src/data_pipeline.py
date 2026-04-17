@@ -76,14 +76,17 @@ def get_transforms(split: str = "train") -> transforms.Compose:
             transforms.RandomCrop(IMG_SIZE),
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomVerticalFlip(p=0.5),
-            transforms.RandomRotation(degrees=20),
-            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-            transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+            transforms.RandomRotation(degrees=30),
+            transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
+            transforms.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.9, 1.1)),
+            transforms.RandomGrayscale(p=0.05),
+            transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
             transforms.ToTensor(),
             transforms.Normalize(
                 mean=[0.485, 0.456, 0.406],
                 std=[0.229, 0.224, 0.225],
             ),
+            transforms.RandomErasing(p=0.2),
         ])
     else:
         return transforms.Compose([
@@ -283,14 +286,114 @@ def get_weighted_sampler(labels: list) -> WeightedRandomSampler:
     return sampler
 
 
+def _balance_classes(
+    image_paths: list,
+    labels: list,
+    samples_per_class: int = 1000,
+) -> Tuple[list, list]:
+    """
+    Balance classes by oversampling minority classes using Augmentor.
+
+    Generates synthetic images via rotation, flipping, and zoom for
+    underrepresented classes to reach samples_per_class per class.
+
+    Args:
+        image_paths: List of image file paths
+        labels: Corresponding labels
+        samples_per_class: Target number of images per class
+
+    Returns:
+        Balanced (image_paths, labels)
+    """
+    import Augmentor
+    import shutil
+    import tempfile
+
+    # Group paths by class
+    class_to_paths: Dict[int, list] = {}
+    for path, label in zip(image_paths, labels):
+        class_to_paths.setdefault(label, []).append(path)
+
+    balanced_paths = []
+    balanced_labels = []
+    augmented_dir = Path(tempfile.mkdtemp(prefix="augmented_"))
+
+    for label_idx in range(NUM_CLASSES):
+        class_name = CLASS_NAMES[label_idx]
+        paths = class_to_paths.get(label_idx, [])
+        count = len(paths)
+
+        # Always include all original images
+        balanced_paths.extend(paths)
+        balanced_labels.extend([label_idx] * count)
+
+        if count >= samples_per_class:
+            logger.info(f"Class '{class_name}': {count} images (no augmentation needed)")
+            continue
+
+        # Need to generate (samples_per_class - count) extra images
+        needed = samples_per_class - count
+        logger.info(
+            f"Class '{class_name}': {count} images, "
+            f"generating {needed} augmented images"
+        )
+
+        # Create temp directory with symlinks to source images
+        class_input_dir = augmented_dir / f"input_{label_idx}"
+        class_output_dir = augmented_dir / f"output_{label_idx}"
+        class_input_dir.mkdir(parents=True, exist_ok=True)
+        class_output_dir.mkdir(parents=True, exist_ok=True)
+
+        for i, src_path in enumerate(paths):
+            ext = Path(src_path).suffix
+            dst = class_input_dir / f"img_{i}{ext}"
+            shutil.copy2(src_path, dst)
+
+        # Augment with Augmentor
+        p = Augmentor.Pipeline(
+            source_directory=str(class_input_dir),
+            output_directory=str(class_output_dir),
+        )
+        p.rotate(probability=0.7, max_left_rotation=15, max_right_rotation=15)
+        p.flip_left_right(probability=0.5)
+        p.flip_top_bottom(probability=0.5)
+        p.zoom_random(probability=0.5, percentage_area=0.8)
+        p.random_distortion(probability=0.3, grid_width=4, grid_height=4, magnitude=2)
+        p.sample(needed)
+
+        # Collect generated images
+        generated = sorted(class_output_dir.glob("*.*"))
+        for gen_path in generated[:needed]:
+            balanced_paths.append(str(gen_path))
+            balanced_labels.append(label_idx)
+
+    # Log final distribution
+    final_counts = np.bincount(balanced_labels, minlength=NUM_CLASSES)
+    logger.info(f"Balanced dataset: {len(balanced_paths)} total images")
+    for i, name in enumerate(CLASS_NAMES):
+        logger.info(f"  {name}: {final_counts[i]}")
+
+    return balanced_paths, balanced_labels
+
+
 def create_data_loaders(
     data_dir: str,
     batch_size: int = 32,
     num_workers: int = 4,
     use_weighted_sampling: bool = True,
+    balance_classes: bool = True,
+    samples_per_class: int = 1000,
 ) -> Tuple[DataLoader, DataLoader, DataLoader, torch.Tensor]:
     """
     Create train/val/test data loaders with preprocessing and augmentation.
+
+    Args:
+        data_dir: Path to dataset root
+        batch_size: Batch size
+        num_workers: DataLoader workers
+        use_weighted_sampling: Use weighted random sampler
+        balance_classes: Oversample minority classes with Augmentor
+        samples_per_class: Target images per class when balancing
 
     Returns:
         train_loader, val_loader, test_loader, class_weights
@@ -302,6 +405,12 @@ def create_data_loaders(
     train_paths, train_labels = splits["train"]
     val_paths, val_labels = splits["val"]
     test_paths, test_labels = data["test"]
+
+    # Balance training set by oversampling minority classes
+    if balance_classes:
+        train_paths, train_labels = _balance_classes(
+            train_paths, train_labels, samples_per_class
+        )
 
     # Compute class weights from training set
     class_weights = compute_class_weights(train_labels)

@@ -149,9 +149,9 @@ def train_model(
     output_dir: str = "models",
     epochs: int = 30,
     batch_size: int = 32,
-    learning_rate: float = 1e-4,
+    learning_rate: float = None,
     weight_decay: float = 1e-4,
-    patience: int = 7,
+    patience: int = 10,
     num_workers: int = 4,
     experiment_name: str = "skin-cancer-classification",
 ) -> Tuple[nn.Module, Dict[str, float]]:
@@ -164,7 +164,7 @@ def train_model(
         output_dir: Directory to save trained models
         epochs: Maximum number of training epochs
         batch_size: Batch size for data loaders
-        learning_rate: Initial learning rate
+        learning_rate: Initial learning rate (auto-selected if None)
         weight_decay: L2 regularization weight
         patience: Early stopping patience
         num_workers: Number of data loader workers
@@ -173,8 +173,18 @@ def train_model(
     Returns:
         Trained model and best validation metrics
     """
+    # Auto-select learning rate per model type
+    if learning_rate is None:
+        lr_map = {
+            "custom_cnn": 1e-3,
+            "resnet50": 1e-4,
+            "efficientnet": 1e-4,
+            "vit": 5e-5,
+        }
+        learning_rate = lr_map.get(model_name, 1e-4)
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    logger.info(f"Training {model_name} on {device}")
+    logger.info(f"Training {model_name} on {device} with lr={learning_rate}")
 
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
@@ -190,20 +200,20 @@ def train_model(
     model = get_model(model_name)
     model = model.to(device)
 
-    # Loss with class weights for imbalanced data
+    # Loss with class weights + label smoothing for better generalization
     class_weights = class_weights.to(device)
-    criterion = nn.CrossEntropyLoss(weight=class_weights)
+    criterion = nn.CrossEntropyLoss(weight=class_weights, label_smoothing=0.1)
 
-    # Optimizer
-    optimizer = optim.Adam(
+    # Optimizer — AdamW for better weight decay handling
+    optimizer = optim.AdamW(
         filter(lambda p: p.requires_grad, model.parameters()),
         lr=learning_rate,
         weight_decay=weight_decay,
     )
 
-    # Learning rate scheduler
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.5, patience=3
+    # Cosine annealing scheduler with warm restarts
+    scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        optimizer, T_0=10, T_mult=2, eta_min=1e-6
     )
 
     # Early stopping
@@ -240,8 +250,8 @@ def train_model(
             # Validate
             val_metrics = validate(model, val_loader, criterion, device)
 
-            # Step scheduler
-            scheduler.step(val_metrics["loss"])
+            # Step scheduler (CosineAnnealingWarmRestarts uses epoch count)
+            scheduler.step(epoch)
 
             epoch_time = time.time() - start_time
 

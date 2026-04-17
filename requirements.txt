@@ -3,6 +3,7 @@ torch>=2.0.0
 torchvision>=0.15.0
 timm>=0.9.0
 transformers>=4.30.0
+Augmentor>=0.2.12
 
 # Data
 kagglehub>=0.3.0
