@@ -149,9 +149,9 @@ def train_model(
     output_dir: str = "models",
     epochs: int = 30,
     batch_size: int = 32,
-    learning_rate: float = None,
+    learning_rate: float = 1e-4,
     weight_decay: float = 1e-4,
-    patience: int = 10,
+    patience: int = 7,
     num_workers: int = 4,
     experiment_name: str = "skin-cancer-classification",
 ) -> Tuple[nn.Module, Dict[str, float]]:
@@ -164,7 +164,7 @@ def train_model(
         output_dir: Directory to save trained models
         epochs: Maximum number of training epochs
         batch_size: Batch size for data loaders
-        learning_rate: Initial learning rate (auto-selected if None)
+        learning_rate: Initial learning rate
         weight_decay: L2 regularization weight
         patience: Early stopping patience
         num_workers: Number of data loader workers
@@ -173,17 +173,13 @@ def train_model(
     Returns:
         Trained model and best validation metrics
     """
-    # Auto-select learning rate per model type
-    if learning_rate is None:
-        lr_map = {
-            "custom_cnn": 1e-3,
-            "resnet50": 1e-4,
-            "efficientnet": 1e-4,
-            "vit": 5e-5,
-        }
-        learning_rate = lr_map.get(model_name, 1e-4)
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # Use MPS (Apple Silicon) if available, then CUDA, then CPU
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
     logger.info(f"Training {model_name} on {device} with lr={learning_rate}")
 
     # Create output directory
@@ -290,11 +286,6 @@ def train_model(
                     "num_classes": NUM_CLASSES,
                 }, model_path)
                 logger.info(f"Saved best model to {model_path}")
-
-            # Early stopping check
-            if early_stopping(val_metrics["loss"]):
-                logger.info(f"Early stopping triggered at epoch {epoch}")
-                break
 
         # Log best metrics
         mlflow.log_metrics({
