@@ -307,7 +307,6 @@ def _balance_classes(
     """
     import Augmentor
     import shutil
-    import tempfile
 
     # Group paths by class
     class_to_paths: Dict[int, list] = {}
@@ -316,7 +315,10 @@ def _balance_classes(
 
     balanced_paths = []
     balanced_labels = []
-    augmented_dir = Path(tempfile.mkdtemp(prefix="augmented_"))
+
+    # Use a persistent directory so augmented images are reused across runs
+    augmented_dir = Path("data") / "augmented"
+    augmented_dir.mkdir(parents=True, exist_ok=True)
 
     for label_idx in range(NUM_CLASSES):
         class_name = CLASS_NAMES[label_idx]
@@ -333,21 +335,36 @@ def _balance_classes(
 
         # Need to generate (samples_per_class - count) extra images
         needed = samples_per_class - count
+
+        class_output_dir = augmented_dir / f"output_{label_idx}"
+
+        # Check if augmented images already exist
+        existing = sorted(class_output_dir.glob("*.*")) if class_output_dir.exists() else []
+        if len(existing) >= needed:
+            logger.info(
+                f"Class '{class_name}': {count} images, "
+                f"reusing {needed} existing augmented images"
+            )
+            for gen_path in existing[:needed]:
+                balanced_paths.append(str(gen_path))
+                balanced_labels.append(label_idx)
+            continue
+
         logger.info(
             f"Class '{class_name}': {count} images, "
             f"generating {needed} augmented images"
         )
 
-        # Create temp directory with symlinks to source images
+        # Create directories for Augmentor input/output
         class_input_dir = augmented_dir / f"input_{label_idx}"
-        class_output_dir = augmented_dir / f"output_{label_idx}"
         class_input_dir.mkdir(parents=True, exist_ok=True)
         class_output_dir.mkdir(parents=True, exist_ok=True)
 
         for i, src_path in enumerate(paths):
             ext = Path(src_path).suffix
             dst = class_input_dir / f"img_{i}{ext}"
-            shutil.copy2(src_path, dst)
+            if not dst.exists():
+                shutil.copy2(src_path, dst)
 
         # Augment with Augmentor
         p = Augmentor.Pipeline(
