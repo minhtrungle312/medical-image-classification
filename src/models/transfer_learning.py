@@ -17,7 +17,7 @@ class ResNet50Model(nn.Module):
     Freezes early layers and fine-tunes the last residual block + classifier.
     """
 
-    def __init__(self, num_classes: int = 9, freeze_backbone: bool = True):
+    def __init__(self, num_classes: int = 9, freeze_backbone: bool = False):
         super().__init__()
 
         self.backbone = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
@@ -32,10 +32,10 @@ class ResNet50Model(nn.Module):
         in_features = self.backbone.fc.in_features
         self.backbone.fc = nn.Sequential(
             nn.Dropout(0.5),
-            nn.Linear(in_features, 512),
+            nn.Linear(in_features, 256),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.3),
-            nn.Linear(512, num_classes),
+            nn.Dropout(0.4),
+            nn.Linear(256, num_classes),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -58,7 +58,7 @@ class EfficientNetModel(nn.Module):
     Freezes the feature extractor and fine-tunes the classifier.
     """
 
-    def __init__(self, num_classes: int = 9, freeze_backbone: bool = True):
+    def __init__(self, num_classes: int = 9, freeze_backbone: bool = False):
         super().__init__()
 
         self.backbone = models.efficientnet_b0(

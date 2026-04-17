@@ -21,7 +21,7 @@ class ViTModel(nn.Module):
         self,
         num_classes: int = 9,
         model_name: str = "vit_base_patch16_224",
-        freeze_backbone: bool = True,
+        freeze_backbone: bool = False,
         dropout_rate: float = 0.3,
     ):
         super().__init__()
