@@ -320,6 +320,36 @@ def _balance_classes(
     augmented_dir = Path("data") / "augmented"
     augmented_dir.mkdir(parents=True, exist_ok=True)
 
+    # Quick check: if ALL classes already have enough augmented images, skip entirely
+    all_ready = True
+    for label_idx in range(NUM_CLASSES):
+        paths = class_to_paths.get(label_idx, [])
+        if len(paths) >= samples_per_class:
+            continue
+        needed = samples_per_class - len(paths)
+        out_dir = augmented_dir / f"output_{label_idx}"
+        existing_count = len(list(out_dir.glob("*.*"))) if out_dir.exists() else 0
+        if existing_count < needed:
+            all_ready = False
+            break
+    if all_ready:
+        logger.info("All augmented data already exists, skipping augmentation")
+        for label_idx in range(NUM_CLASSES):
+            paths = class_to_paths.get(label_idx, [])
+            balanced_paths.extend(paths)
+            balanced_labels.extend([label_idx] * len(paths))
+            needed = samples_per_class - len(paths)
+            if needed > 0:
+                out_dir = augmented_dir / f"output_{label_idx}"
+                for gen_path in sorted(out_dir.glob("*.*"))[:needed]:
+                    balanced_paths.append(str(gen_path))
+                    balanced_labels.append(label_idx)
+        final_counts = np.bincount(balanced_labels, minlength=NUM_CLASSES)
+        logger.info(f"Balanced dataset: {len(balanced_paths)} total images")
+        for i, name in enumerate(CLASS_NAMES):
+            logger.info(f"  {name}: {final_counts[i]}")
+        return balanced_paths, balanced_labels
+
     for label_idx in range(NUM_CLASSES):
         class_name = CLASS_NAMES[label_idx]
         paths = class_to_paths.get(label_idx, [])
@@ -367,9 +397,11 @@ def _balance_classes(
                 shutil.copy2(src_path, dst)
 
         # Augment with Augmentor
+        # NOTE: Augmentor treats output_directory as relative to source_directory,
+        # so we must use an absolute path to get images in the right place.
         p = Augmentor.Pipeline(
             source_directory=str(class_input_dir),
-            output_directory=str(class_output_dir),
+            output_directory=str(class_output_dir.resolve()),
         )
         p.rotate(probability=0.7, max_left_rotation=15, max_right_rotation=15)
         p.flip_left_right(probability=0.5)
