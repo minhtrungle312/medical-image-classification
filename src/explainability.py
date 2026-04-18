@@ -76,10 +76,14 @@ def generate_gradcam(
     # Use reshape_transform for ViT models
     reshape_transform = None
     if model_name == "vit":
+
         def reshape_transform_fn(tensor, height=14, width=14):
-            result = tensor[:, 1:, :].reshape(tensor.size(0), height, width, tensor.size(2))
+            result = tensor[:, 1:, :].reshape(
+                tensor.size(0), height, width, tensor.size(2)
+            )
             result = result.permute(0, 3, 1, 2)
             return result
+
         reshape_transform = reshape_transform_fn
 
     # Generate Grad-CAM
@@ -89,15 +93,21 @@ def generate_gradcam(
         reshape_transform=reshape_transform,
     )
 
-    targets = [ClassifierOutputTarget(target_class)] if target_class is not None else None
+    targets = (
+        [ClassifierOutputTarget(target_class)] if target_class is not None else None
+    )
     grayscale_cam = cam(input_tensor=input_tensor, targets=targets)
     grayscale_cam = grayscale_cam[0, :]
 
     # Create overlay
-    cam_image = show_cam_on_image(rgb_image.astype(np.float32), grayscale_cam, use_rgb=True)
+    cam_image = show_cam_on_image(
+        rgb_image.astype(np.float32), grayscale_cam, use_rgb=True
+    )
 
     if output_path:
-        _save_gradcam_plot(rgb_image, cam_image, grayscale_cam, model_name, output_path, target_class)
+        _save_gradcam_plot(
+            rgb_image, cam_image, grayscale_cam, model_name, output_path, target_class
+        )
 
     return cam_image
 
@@ -147,7 +157,9 @@ def generate_explainability_report(
     for i, img_path in enumerate(image_paths):
         output_path = os.path.join(output_dir, f"gradcam_{model_name}_{i}.png")
         try:
-            generate_gradcam(model, model_name, img_path, output_path=output_path, device=device)
+            generate_gradcam(
+                model, model_name, img_path, output_path=output_path, device=device
+            )
         except Exception as e:
             logger.error(f"Failed to generate Grad-CAM for {img_path}: {e}")
 
@@ -175,8 +187,12 @@ def analyze_fairness(
 
     report = {
         "overall": {
-            "recall": float(recall_score(labels, predictions, average="macro", zero_division=0)),
-            "precision": float(precision_score(labels, predictions, average="macro", zero_division=0)),
+            "recall": float(
+                recall_score(labels, predictions, average="macro", zero_division=0)
+            ),
+            "precision": float(
+                precision_score(labels, predictions, average="macro", zero_division=0)
+            ),
         },
         "per_class": {},
         "disparities": {},
@@ -184,7 +200,9 @@ def analyze_fairness(
 
     # Per-class performance (demographic parity analog for disease types)
     per_class_recall = recall_score(labels, predictions, average=None, zero_division=0)
-    per_class_precision = precision_score(labels, predictions, average=None, zero_division=0)
+    per_class_precision = precision_score(
+        labels, predictions, average=None, zero_division=0
+    )
 
     for i, cls_name in enumerate(CLASS_NAMES):
         if i < len(per_class_recall):
@@ -220,8 +238,10 @@ def analyze_fairness(
                     attr_metrics[str(val)] = {
                         "recall": float(
                             recall_score(
-                                labels[mask], predictions[mask],
-                                average="macro", zero_division=0,
+                                labels[mask],
+                                predictions[mask],
+                                average="macro",
+                                zero_division=0,
                             )
                         ),
                         "support": int(np.sum(mask)),

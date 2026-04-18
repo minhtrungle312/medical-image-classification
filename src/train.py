@@ -25,7 +25,13 @@ import numpy as np
 # Set MLflow tracking URI (default to local mlruns if not set)
 MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5001")
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, fbeta_score
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    fbeta_score,
+)
 
 from src.data_pipeline import create_data_loaders, NUM_CLASSES
 from src.models.transfer_learning import ResNet50Model, EfficientNetModel
@@ -71,7 +77,9 @@ def get_model(model_name: str, num_classes: int = NUM_CLASSES) -> nn.Module:
     }
 
     if model_name not in models_map:
-        raise ValueError(f"Unknown model: {model_name}. Choose from {list(models_map.keys())}")
+        raise ValueError(
+            f"Unknown model: {model_name}. Choose from {list(models_map.keys())}"
+        )
 
     return models_map[model_name]()
 
@@ -136,10 +144,14 @@ def validate(
     metrics = {
         "loss": epoch_loss,
         "accuracy": accuracy_score(all_labels, all_preds),
-        "precision": precision_score(all_labels, all_preds, average="macro", zero_division=0),
+        "precision": precision_score(
+            all_labels, all_preds, average="macro", zero_division=0
+        ),
         "recall": recall_score(all_labels, all_preds, average="macro", zero_division=0),
         "f1": f1_score(all_labels, all_preds, average="macro", zero_division=0),
-        "f2": fbeta_score(all_labels, all_preds, beta=2, average="macro", zero_division=0),
+        "f2": fbeta_score(
+            all_labels, all_preds, beta=2, average="macro", zero_division=0
+        ),
     }
 
     return metrics
@@ -225,25 +237,31 @@ def train_model(
 
     with mlflow.start_run(run_name=model_name):
         # Log hyperparameters
-        mlflow.log_params({
-            "model_name": model_name,
-            "epochs": epochs,
-            "batch_size": batch_size,
-            "learning_rate": learning_rate,
-            "weight_decay": weight_decay,
-            "patience": patience,
-            "optimizer": "Adam",
-            "loss": "CrossEntropyLoss (weighted)",
-            "device": str(device),
-            "num_params": sum(p.numel() for p in model.parameters()),
-            "trainable_params": sum(p.numel() for p in model.parameters() if p.requires_grad),
-        })
+        mlflow.log_params(
+            {
+                "model_name": model_name,
+                "epochs": epochs,
+                "batch_size": batch_size,
+                "learning_rate": learning_rate,
+                "weight_decay": weight_decay,
+                "patience": patience,
+                "optimizer": "Adam",
+                "loss": "CrossEntropyLoss (weighted)",
+                "device": str(device),
+                "num_params": sum(p.numel() for p in model.parameters()),
+                "trainable_params": sum(
+                    p.numel() for p in model.parameters() if p.requires_grad
+                ),
+            }
+        )
 
         for epoch in range(1, epochs + 1):
             start_time = time.time()
 
             # Train
-            train_metrics = train_one_epoch(model, train_loader, criterion, optimizer, device)
+            train_metrics = train_one_epoch(
+                model, train_loader, criterion, optimizer, device
+            )
 
             # Validate
             val_metrics = validate(model, val_loader, criterion, device)
@@ -254,18 +272,21 @@ def train_model(
             epoch_time = time.time() - start_time
 
             # Log metrics
-            mlflow.log_metrics({
-                "train_loss": train_metrics["loss"],
-                "train_accuracy": train_metrics["accuracy"],
-                "val_loss": val_metrics["loss"],
-                "val_accuracy": val_metrics["accuracy"],
-                "val_precision": val_metrics["precision"],
-                "val_recall": val_metrics["recall"],
-                "val_f1": val_metrics["f1"],
-                "val_f2": val_metrics["f2"],
-                "epoch_time": epoch_time,
-                "learning_rate": optimizer.param_groups[0]["lr"],
-            }, step=epoch)
+            mlflow.log_metrics(
+                {
+                    "train_loss": train_metrics["loss"],
+                    "train_accuracy": train_metrics["accuracy"],
+                    "val_loss": val_metrics["loss"],
+                    "val_accuracy": val_metrics["accuracy"],
+                    "val_precision": val_metrics["precision"],
+                    "val_recall": val_metrics["recall"],
+                    "val_f1": val_metrics["f1"],
+                    "val_f2": val_metrics["f2"],
+                    "epoch_time": epoch_time,
+                    "learning_rate": optimizer.param_groups[0]["lr"],
+                },
+                step=epoch,
+            )
 
             logger.info(
                 f"Epoch {epoch}/{epochs} ({epoch_time:.1f}s) - "
@@ -282,13 +303,16 @@ def train_model(
                 best_val_loss = val_metrics["loss"]
                 best_val_metrics = val_metrics
                 model_path = os.path.join(output_dir, f"{model_name}_best.pth")
-                torch.save({
-                    "model_state_dict": model.state_dict(),
-                    "model_name": model_name,
-                    "epoch": epoch,
-                    "val_metrics": val_metrics,
-                    "num_classes": NUM_CLASSES,
-                }, model_path)
+                torch.save(
+                    {
+                        "model_state_dict": model.state_dict(),
+                        "model_name": model_name,
+                        "epoch": epoch,
+                        "val_metrics": val_metrics,
+                        "num_classes": NUM_CLASSES,
+                    },
+                    model_path,
+                )
                 logger.info(f"Saved best model to {model_path}")
 
             # Early stopping check
@@ -297,9 +321,7 @@ def train_model(
                 break
 
         # Log best metrics
-        mlflow.log_metrics({
-            f"best_{k}": v for k, v in best_val_metrics.items()
-        })
+        mlflow.log_metrics({f"best_{k}": v for k, v in best_val_metrics.items()})
 
         # Log model artifact
         model_path = os.path.join(output_dir, f"{model_name}_best.pth")
@@ -331,7 +353,9 @@ def train_all_models(
         logger.info(f"Training model: {model_name}")
         logger.info(f"{'='*60}\n")
 
-        lr = learning_rate if learning_rate is not None else lr_map.get(model_name, 1e-4)
+        lr = (
+            learning_rate if learning_rate is not None else lr_map.get(model_name, 1e-4)
+        )
 
         _, metrics = train_model(
             model_name=model_name,
@@ -347,17 +371,31 @@ def train_all_models(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train skin cancer classification models")
-    parser.add_argument("--model", type=str, default="all",
-                        choices=["resnet50", "efficientnet", "vit", "all"],
-                        help="Model to train")
-    parser.add_argument("--data-dir", type=str, default="data", help="Path to ISIC dataset")
-    parser.add_argument("--output-dir", type=str, default="models", help="Output directory")
+    parser = argparse.ArgumentParser(
+        description="Train skin cancer classification models"
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="all",
+        choices=["resnet50", "efficientnet", "vit", "all"],
+        help="Model to train",
+    )
+    parser.add_argument(
+        "--data-dir", type=str, default="data", help="Path to ISIC dataset"
+    )
+    parser.add_argument(
+        "--output-dir", type=str, default="models", help="Output directory"
+    )
     parser.add_argument("--epochs", type=int, default=30, help="Number of epochs")
     parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
-    parser.add_argument("--patience", type=int, default=7, help="Early stopping patience")
-    parser.add_argument("--num-workers", type=int, default=4, help="Data loader workers")
+    parser.add_argument(
+        "--patience", type=int, default=7, help="Early stopping patience"
+    )
+    parser.add_argument(
+        "--num-workers", type=int, default=4, help="Data loader workers"
+    )
 
     args = parser.parse_args()
 

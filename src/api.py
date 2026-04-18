@@ -93,6 +93,7 @@ setup_prometheus(app)
 
 # --- Response Models ---
 
+
 class PredictionResponse(BaseModel):
     predicted_class: str
     confidence: float
@@ -134,6 +135,7 @@ class HealthResponse(BaseModel):
 
 
 # --- Endpoints ---
+
 
 @app.get("/", tags=["General"])
 async def root():

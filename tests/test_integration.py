@@ -28,9 +28,15 @@ class TestEndToEndInference:
         predictor = SkinCancerPredictor(model_name="resnet50")
         result = predictor.predict(sample_image)
         assert result["predicted_class"] in [
-            "actinic keratosis", "basal cell carcinoma", "dermatofibroma",
-            "melanoma", "nevus", "pigmented benign keratosis",
-            "seborrheic keratosis", "squamous cell carcinoma", "vascular lesion",
+            "actinic keratosis",
+            "basal cell carcinoma",
+            "dermatofibroma",
+            "melanoma",
+            "nevus",
+            "pigmented benign keratosis",
+            "seborrheic keratosis",
+            "squamous cell carcinoma",
+            "vascular lesion",
         ]
 
     def test_efficientnet_inference(self, sample_image):
@@ -41,7 +47,9 @@ class TestEndToEndInference:
     def test_vit_inference(self, sample_image):
         predictor = SkinCancerPredictor(model_name="vit")
         result = predictor.predict(sample_image)
-        assert sum(result["class_probabilities"].values()) == pytest.approx(1.0, abs=0.01)
+        assert sum(result["class_probabilities"].values()) == pytest.approx(
+            1.0, abs=0.01
+        )
 
     def test_probabilities_sum_to_one(self, sample_image):
         predictor = SkinCancerPredictor(model_name="resnet50")

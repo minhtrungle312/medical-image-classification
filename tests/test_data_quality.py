@@ -71,9 +71,7 @@ class TestDataset:
         img_path = tmp_path / "test.jpg"
         Image.new("RGB", (224, 224), color=(100, 150, 200)).save(img_path)
 
-        dataset = ISICSkinDataset(
-            [str(img_path)], [0], get_transforms("val")
-        )
+        dataset = ISICSkinDataset([str(img_path)], [0], get_transforms("val"))
         image, label = dataset[0]
         assert isinstance(image, torch.Tensor)
         assert image.shape == (3, IMG_SIZE, IMG_SIZE)

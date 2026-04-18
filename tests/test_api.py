@@ -39,10 +39,15 @@ def mock_predictor():
         "predicted_class": "nevus",
         "confidence": 0.85,
         "class_probabilities": {
-            "actinic keratosis": 0.01, "basal cell carcinoma": 0.02,
-            "dermatofibroma": 0.01, "melanoma": 0.05, "nevus": 0.85,
-            "pigmented benign keratosis": 0.02, "seborrheic keratosis": 0.01,
-            "squamous cell carcinoma": 0.02, "vascular lesion": 0.01,
+            "actinic keratosis": 0.01,
+            "basal cell carcinoma": 0.02,
+            "dermatofibroma": 0.01,
+            "melanoma": 0.05,
+            "nevus": 0.85,
+            "pigmented benign keratosis": 0.02,
+            "seborrheic keratosis": 0.01,
+            "squamous cell carcinoma": 0.02,
+            "vascular lesion": 0.01,
         },
         "model_name": "efficientnet",
         "is_malignant": False,
@@ -61,6 +66,7 @@ class TestHealthEndpoint:
     def test_health_no_model(self, client):
         """Health check when model is not loaded."""
         import src.api
+
         original = src.api.predictor
         src.api.predictor = None
         response = client.get("/health")
@@ -71,6 +77,7 @@ class TestHealthEndpoint:
 
     def test_health_with_model(self, client, mock_predictor):
         import src.api
+
         original = src.api.predictor
         src.api.predictor = mock_predictor
         response = client.get("/health")
@@ -91,6 +98,7 @@ class TestHealthEndpoint:
 class TestPredictEndpoint:
     def test_predict_success(self, client, sample_image_bytes, mock_predictor):
         import src.api
+
         original = src.api.predictor
         src.api.predictor = mock_predictor
 
@@ -109,6 +117,7 @@ class TestPredictEndpoint:
 
     def test_predict_invalid_file_type(self, client, mock_predictor):
         import src.api
+
         original = src.api.predictor
         src.api.predictor = mock_predictor
 
@@ -121,6 +130,7 @@ class TestPredictEndpoint:
 
     def test_predict_no_model(self, client, sample_image_bytes):
         import src.api
+
         original = src.api.predictor
         src.api.predictor = None
 
@@ -133,6 +143,7 @@ class TestPredictEndpoint:
 
     def test_predict_no_file(self, client, mock_predictor):
         import src.api
+
         original = src.api.predictor
         src.api.predictor = mock_predictor
 
@@ -142,6 +153,7 @@ class TestPredictEndpoint:
 
     def test_predict_corrupt_image(self, client, mock_predictor):
         import src.api
+
         original = src.api.predictor
         src.api.predictor = mock_predictor
 

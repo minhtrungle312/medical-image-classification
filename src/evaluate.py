@@ -89,14 +89,24 @@ def compute_metrics(
 
     metrics = {
         "accuracy": accuracy_score(labels, preds),
-        "precision_macro": precision_score(labels, preds, average="macro", zero_division=0),
+        "precision_macro": precision_score(
+            labels, preds, average="macro", zero_division=0
+        ),
         "recall_macro": recall_score(labels, preds, average="macro", zero_division=0),
         "f1_macro": f1_score(labels, preds, average="macro", zero_division=0),
-        "f2_macro": fbeta_score(labels, preds, beta=2, average="macro", zero_division=0),
-        "precision_weighted": precision_score(labels, preds, average="weighted", zero_division=0),
-        "recall_weighted": recall_score(labels, preds, average="weighted", zero_division=0),
+        "f2_macro": fbeta_score(
+            labels, preds, beta=2, average="macro", zero_division=0
+        ),
+        "precision_weighted": precision_score(
+            labels, preds, average="weighted", zero_division=0
+        ),
+        "recall_weighted": recall_score(
+            labels, preds, average="weighted", zero_division=0
+        ),
         "f1_weighted": f1_score(labels, preds, average="weighted", zero_division=0),
-        "f2_weighted": fbeta_score(labels, preds, beta=2, average="weighted", zero_division=0),
+        "f2_weighted": fbeta_score(
+            labels, preds, beta=2, average="weighted", zero_division=0
+        ),
     }
 
     # ROC-AUC (One-vs-Rest)
@@ -134,8 +144,12 @@ def plot_confusion_matrix(
 
     # Raw counts
     sns.heatmap(
-        cm, annot=True, fmt="d", cmap="Blues",
-        xticklabels=CLASS_NAMES, yticklabels=CLASS_NAMES,
+        cm,
+        annot=True,
+        fmt="d",
+        cmap="Blues",
+        xticklabels=CLASS_NAMES,
+        yticklabels=CLASS_NAMES,
         ax=axes[0],
     )
     axes[0].set_title(f"{model_name} - Confusion Matrix (Counts)")
@@ -144,8 +158,12 @@ def plot_confusion_matrix(
 
     # Normalized
     sns.heatmap(
-        cm_normalized, annot=True, fmt=".2f", cmap="Blues",
-        xticklabels=CLASS_NAMES, yticklabels=CLASS_NAMES,
+        cm_normalized,
+        annot=True,
+        fmt=".2f",
+        cmap="Blues",
+        xticklabels=CLASS_NAMES,
+        yticklabels=CLASS_NAMES,
         ax=axes[1],
     )
     axes[1].set_title(f"{model_name} - Confusion Matrix (Normalized)")
@@ -240,15 +258,29 @@ def create_comparison_table(
         best_f1_model = df["f1_macro"].idxmax()
         best_auc_model = df["roc_auc_macro"].idxmax()
 
-        f.write(f"Best Recall (macro):  {best_recall_model} ({df.loc[best_recall_model, 'recall_macro']:.4f})\n")
-        f.write(f"Best F1 (macro):      {best_f1_model} ({df.loc[best_f1_model, 'f1_macro']:.4f})\n")
-        f.write(f"Best ROC-AUC (macro): {best_auc_model} ({df.loc[best_auc_model, 'roc_auc_macro']:.4f})\n\n")
+        f.write(
+            f"Best Recall (macro):  {best_recall_model} ({df.loc[best_recall_model, 'recall_macro']:.4f})\n"
+        )
+        f.write(
+            f"Best F1 (macro):      {best_f1_model} ({df.loc[best_f1_model, 'f1_macro']:.4f})\n"
+        )
+        f.write(
+            f"Best ROC-AUC (macro): {best_auc_model} ({df.loc[best_auc_model, 'roc_auc_macro']:.4f})\n\n"
+        )
 
         f.write(f"RECOMMENDATION: {best_recall_model}\n")
-        f.write(f"Justification: In medical imaging, minimizing false negatives (missed diagnoses)\n")
-        f.write(f"is critical. The model with the highest recall ensures that potential skin\n")
-        f.write(f"cancer cases are not missed, even at the cost of some false positives.\n")
-        f.write(f"False positives lead to additional testing; false negatives can be fatal.\n")
+        f.write(
+            f"Justification: In medical imaging, minimizing false negatives (missed diagnoses)\n"
+        )
+        f.write(
+            f"is critical. The model with the highest recall ensures that potential skin\n"
+        )
+        f.write(
+            f"cancer cases are not missed, even at the cost of some false positives.\n"
+        )
+        f.write(
+            f"False positives lead to additional testing; false negatives can be fatal.\n"
+        )
 
     logger.info(f"Saved comparison table to {csv_path} and {table_path}")
     return df
@@ -259,7 +291,13 @@ def plot_comparison_bar_chart(
     output_dir: str,
 ) -> str:
     """Plot bar chart comparing models across key metrics."""
-    metrics_to_plot = ["accuracy", "precision_macro", "recall_macro", "f1_macro", "roc_auc_macro"]
+    metrics_to_plot = [
+        "accuracy",
+        "precision_macro",
+        "recall_macro",
+        "f1_macro",
+        "roc_auc_macro",
+    ]
     metric_labels = ["Accuracy", "Precision", "Recall", "F1-Score", "ROC-AUC"]
 
     model_names = list(all_results.keys())
@@ -275,8 +313,12 @@ def plot_comparison_bar_chart(
         # Add value labels on bars
         for bar, val in zip(bars, values):
             ax.text(
-                bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.01,
-                f"{val:.3f}", ha="center", va="bottom", fontsize=7,
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + 0.01,
+                f"{val:.3f}",
+                ha="center",
+                va="bottom",
+                fontsize=7,
             )
 
     ax.set_xlabel("Metric")
@@ -330,7 +372,9 @@ def evaluate_all_models(
     for model_name in model_names:
         checkpoint_path = os.path.join(models_dir, f"{model_name}_best.pth")
         if not os.path.exists(checkpoint_path):
-            logger.warning(f"Checkpoint not found: {checkpoint_path}, skipping {model_name}")
+            logger.warning(
+                f"Checkpoint not found: {checkpoint_path}, skipping {model_name}"
+            )
             continue
 
         logger.info(f"\nEvaluating {model_name}...")
@@ -349,10 +393,14 @@ def evaluate_all_models(
         all_results[model_name] = metrics
 
         # Classification report
-        report = classification_report(labels, preds, target_names=CLASS_NAMES, zero_division=0)
+        report = classification_report(
+            labels, preds, target_names=CLASS_NAMES, zero_division=0
+        )
         logger.info(f"\n{model_name} Classification Report:\n{report}")
 
-        report_path = os.path.join(output_dir, f"classification_report_{model_name}.txt")
+        report_path = os.path.join(
+            output_dir, f"classification_report_{model_name}.txt"
+        )
         with open(report_path, "w") as f:
             f.write(f"Classification Report - {model_name}\n")
             f.write("=" * 60 + "\n")
@@ -386,8 +434,12 @@ def evaluate_all_models(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate trained models")
     parser.add_argument("--data-dir", type=str, default="data", help="Path to dataset")
-    parser.add_argument("--models-dir", type=str, default="models", help="Saved models dir")
-    parser.add_argument("--output-dir", type=str, default="results", help="Output directory")
+    parser.add_argument(
+        "--models-dir", type=str, default="models", help="Saved models dir"
+    )
+    parser.add_argument(
+        "--output-dir", type=str, default="results", help="Output directory"
+    )
     parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
     parser.add_argument("--num-workers", type=int, default=4, help="Workers")
 

@@ -27,6 +27,7 @@ def single_input():
 
 # --- ResNet50 Tests ---
 
+
 class TestResNet50:
     def test_output_shape(self, sample_input):
         model = ResNet50Model(num_classes=NUM_CLASSES)
@@ -55,6 +56,7 @@ class TestResNet50:
 
 # --- EfficientNet Tests ---
 
+
 class TestEfficientNet:
     def test_output_shape(self, sample_input):
         model = EfficientNetModel(num_classes=NUM_CLASSES)
@@ -73,6 +75,7 @@ class TestEfficientNet:
 
 
 # --- ViT Tests ---
+
 
 class TestViT:
     def test_output_shape(self, sample_input):
@@ -94,6 +97,7 @@ class TestViT:
 
 
 # --- Model Factory Tests ---
+
 
 class TestModelFactory:
     def test_get_all_models(self, sample_input):

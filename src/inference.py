@@ -13,7 +13,12 @@ import torch
 import torch.nn as nn
 from PIL import Image
 
-from src.data_pipeline import get_transforms, CLASS_NAMES, NUM_CLASSES, MALIGNANT_CLASSES
+from src.data_pipeline import (
+    get_transforms,
+    CLASS_NAMES,
+    NUM_CLASSES,
+    MALIGNANT_CLASSES,
+)
 from src.train import get_model
 
 logger = logging.getLogger(__name__)
@@ -44,7 +49,9 @@ class SkinCancerPredictor:
         self.model = get_model(model_name)
 
         if checkpoint_path and os.path.exists(checkpoint_path):
-            checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=True)
+            checkpoint = torch.load(
+                checkpoint_path, map_location=self.device, weights_only=True
+            )
             self.model.load_state_dict(checkpoint["model_state_dict"])
             logger.info(f"Loaded checkpoint from {checkpoint_path}")
         else:
