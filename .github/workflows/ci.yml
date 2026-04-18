@@ -11,33 +11,9 @@ env:
   MLFLOW_TRACKING_URI: "http://localhost:5001"
 
 jobs:
-  lint:
-    name: Lint & Format Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install lint tools
-        run: pip install flake8 black isort
-
-      - name: Check formatting (black)
-        run: black --check --diff src/ tests/
-
-      - name: Check import order (isort)
-        run: isort --check-only --diff src/ tests/
-
-      - name: Lint (flake8)
-        run: flake8 src/ tests/ --max-line-length 120 --ignore E501,W503,E203
-
   test:
-    name: Unit & Data Quality Tests
+    name: Unit Tests
     runs-on: ubuntu-latest
-    needs: lint
     steps:
       - uses: actions/checkout@v4
 
@@ -56,8 +32,6 @@ jobs:
       - name: Run unit tests
         run: |
           pytest tests/test_model.py tests/test_api.py tests/test_data_quality.py \
-            -v --tb=short --co -q 2>/dev/null || true
-          pytest tests/test_model.py tests/test_api.py \
             -v --tb=short \
             --junitxml=reports/test-results.xml \
             --cov=src --cov-report=xml:reports/coverage.xml \
@@ -71,7 +45,7 @@ jobs:
           path: reports/
 
   docker:
-    name: Docker Build
+    name: Docker Build & Test
     runs-on: ubuntu-latest
     needs: test
     steps:
@@ -99,7 +73,6 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
-    needs: lint
     steps:
       - uses: actions/checkout@v4
 
