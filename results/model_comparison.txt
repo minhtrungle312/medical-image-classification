@@ -1,0 +1,23 @@
+================================================================================
+MODEL COMPARISON - Skin Cancer Classification
+================================================================================
+
+              accuracy  precision_macro  recall_macro  f1_macro  roc_auc_macro  recall_melanoma
+model                                                                                          
+efficientnet    0.6186           0.6553        0.5972    0.5778         0.8938           0.2500
+resnet50        0.5932           0.6580        0.5764    0.5508         0.8589           0.1875
+vit             0.5424           0.5981        0.5347    0.4929         0.9118           0.0625
+
+--------------------------------------------------------------------------------
+BEST MODEL ANALYSIS (Priority: Recall for Medical Diagnosis)
+--------------------------------------------------------------------------------
+
+Best Recall (macro):  efficientnet (0.5972)
+Best F1 (macro):      efficientnet (0.5778)
+Best ROC-AUC (macro): vit (0.9118)
+
+RECOMMENDATION: efficientnet
+Justification: In medical imaging, minimizing false negatives (missed diagnoses)
+is critical. The model with the highest recall ensures that potential skin
+cancer cases are not missed, even at the cost of some false positives.
+False positives lead to additional testing; false negatives can be fatal.

@@ -71,32 +71,40 @@ class ISICSkinDataset(Dataset):
 def get_transforms(split: str = "train") -> transforms.Compose:
     """Get data transforms for a given split with augmentation for training."""
     if split == "train":
-        return transforms.Compose([
-            transforms.Resize((IMG_SIZE + 32, IMG_SIZE + 32)),
-            transforms.RandomCrop(IMG_SIZE),
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomVerticalFlip(p=0.5),
-            transforms.RandomRotation(degrees=30),
-            transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
-            transforms.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.9, 1.1)),
-            transforms.RandomGrayscale(p=0.05),
-            transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225],
-            ),
-            transforms.RandomErasing(p=0.2),
-        ])
+        return transforms.Compose(
+            [
+                transforms.Resize((IMG_SIZE + 32, IMG_SIZE + 32)),
+                transforms.RandomCrop(IMG_SIZE),
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomVerticalFlip(p=0.5),
+                transforms.RandomRotation(degrees=30),
+                transforms.ColorJitter(
+                    brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1
+                ),
+                transforms.RandomAffine(
+                    degrees=15, translate=(0.1, 0.1), scale=(0.9, 1.1)
+                ),
+                transforms.RandomGrayscale(p=0.05),
+                transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225],
+                ),
+                transforms.RandomErasing(p=0.2),
+            ]
+        )
     else:
-        return transforms.Compose([
-            transforms.Resize((IMG_SIZE, IMG_SIZE)),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225],
-            ),
-        ])
+        return transforms.Compose(
+            [
+                transforms.Resize((IMG_SIZE, IMG_SIZE)),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225],
+                ),
+            ]
+        )
 
 
 def download_dataset(data_dir: str = "data") -> str:
@@ -246,16 +254,14 @@ def split_dataset(
 ) -> Dict[str, Tuple[list, list]]:
     """Split a set of images into train/val with stratification."""
     train_paths, val_paths, train_labels, val_labels = train_test_split(
-        image_paths, labels,
+        image_paths,
+        labels,
         test_size=val_size,
         stratify=labels,
         random_state=random_state,
     )
 
-    logger.info(
-        f"Split sizes - Train: {len(train_paths)}, "
-        f"Val: {len(val_paths)}"
-    )
+    logger.info(f"Split sizes - Train: {len(train_paths)}, " f"Val: {len(val_paths)}")
 
     return {
         "train": (train_paths, train_labels),
@@ -360,7 +366,9 @@ def _balance_classes(
         balanced_labels.extend([label_idx] * count)
 
         if count >= samples_per_class:
-            logger.info(f"Class '{class_name}': {count} images (no augmentation needed)")
+            logger.info(
+                f"Class '{class_name}': {count} images (no augmentation needed)"
+            )
             continue
 
         # Need to generate (samples_per_class - count) extra images
@@ -369,7 +377,9 @@ def _balance_classes(
         class_output_dir = augmented_dir / f"output_{label_idx}"
 
         # Check if augmented images already exist
-        existing = sorted(class_output_dir.glob("*.*")) if class_output_dir.exists() else []
+        existing = (
+            sorted(class_output_dir.glob("*.*")) if class_output_dir.exists() else []
+        )
         if len(existing) >= needed:
             logger.info(
                 f"Class '{class_name}': {count} images, "
@@ -432,7 +442,8 @@ def create_data_loaders(
     use_weighted_sampling: bool = True,
     balance_classes: bool = True,
     samples_per_class: int = 1000,
-) -> Tuple[DataLoader, DataLoader, DataLoader, torch.Tensor]:
+    full_train: bool = False,
+) -> Tuple[DataLoader, Optional[DataLoader], DataLoader, torch.Tensor]:
     """
     Create train/val/test data loaders with preprocessing and augmentation.
 
@@ -443,19 +454,28 @@ def create_data_loaders(
         use_weighted_sampling: Use weighted random sampler
         balance_classes: Oversample minority classes with Augmentor
         samples_per_class: Target images per class when balancing
+        full_train: If True, use 100% of training data (no val split).
+                     val_loader will be None.
 
     Returns:
-        train_loader, val_loader, test_loader, class_weights
+        train_loader, val_loader (or None), test_loader, class_weights
     """
     data = load_train_test_split(data_dir)
     train_all_paths, train_all_labels = data["train_all"]
-    splits = split_dataset(train_all_paths, train_all_labels)
-
-    train_paths, train_labels = splits["train"]
-    val_paths, val_labels = splits["val"]
     test_paths, test_labels = data["test"]
 
-    # Balance training set by oversampling minority classes
+    if full_train:
+        # Use ALL training data, no validation split
+        train_paths, train_labels = train_all_paths, train_all_labels
+        val_paths, val_labels = None, None
+        logger.info("Full train mode: using 100%% of training data, no validation split")
+    else:
+        # Split val BEFORE augmentation to avoid data leakage
+        splits = split_dataset(train_all_paths, train_all_labels)
+        train_paths, train_labels = splits["train"]
+        val_paths, val_labels = splits["val"]
+
+    # Balance only training set
     if balance_classes:
         train_paths, train_labels = _balance_classes(
             train_paths, train_labels, samples_per_class
@@ -466,11 +486,13 @@ def create_data_loaders(
 
     # Create datasets with appropriate transforms
     train_dataset = ISICSkinDataset(train_paths, train_labels, get_transforms("train"))
-    val_dataset = ISICSkinDataset(val_paths, val_labels, get_transforms("val"))
+    val_dataset = ISICSkinDataset(val_paths, val_labels, get_transforms("val")) if val_paths else None
     test_dataset = ISICSkinDataset(test_paths, test_labels, get_transforms("test"))
 
     # Weighted sampling for training
-    train_sampler = get_weighted_sampler(train_labels) if use_weighted_sampling else None
+    train_sampler = (
+        get_weighted_sampler(train_labels) if use_weighted_sampling else None
+    )
 
     # Only use pin_memory on CUDA (not supported on MPS/CPU)
     pin = torch.cuda.is_available()
@@ -485,13 +507,15 @@ def create_data_loaders(
         drop_last=True,
     )
 
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=pin,
-    )
+    val_loader = None
+    if val_dataset is not None:
+        val_loader = DataLoader(
+            val_dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=num_workers,
+            pin_memory=pin,
+        )
 
     test_loader = DataLoader(
         test_dataset,
@@ -504,7 +528,7 @@ def create_data_loaders(
     logger.info(
         f"DataLoaders created - "
         f"Train batches: {len(train_loader)}, "
-        f"Val batches: {len(val_loader)}, "
+        f"Val batches: {len(val_loader) if val_loader else 0}, "
         f"Test batches: {len(test_loader)}"
     )
 

@@ -39,10 +39,15 @@ def mock_predictor():
         "predicted_class": "nevus",
         "confidence": 0.85,
         "class_probabilities": {
-            "actinic keratosis": 0.01, "basal cell carcinoma": 0.02,
-            "dermatofibroma": 0.01, "melanoma": 0.05, "nevus": 0.85,
-            "pigmented benign keratosis": 0.02, "seborrheic keratosis": 0.01,
-            "squamous cell carcinoma": 0.02, "vascular lesion": 0.01,
+            "actinic keratosis": 0.01,
+            "basal cell carcinoma": 0.02,
+            "dermatofibroma": 0.01,
+            "melanoma": 0.05,
+            "nevus": 0.85,
+            "pigmented benign keratosis": 0.02,
+            "seborrheic keratosis": 0.01,
+            "squamous cell carcinoma": 0.02,
+            "vascular lesion": 0.01,
         },
         "model_name": "efficientnet",
         "is_malignant": False,
@@ -59,26 +64,28 @@ class TestHealthEndpoint:
         assert "service" in data
 
     def test_health_no_model(self, client):
-        """Health check when model is not loaded."""
+        """Health check when no models are loaded."""
         import src.api
-        original = src.api.predictor
-        src.api.predictor = None
+
+        original_predictors = src.api.predictors
+        src.api.predictors = {}
         response = client.get("/health")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "unhealthy"
-        src.api.predictor = original
+        src.api.predictors = original_predictors
 
     def test_health_with_model(self, client, mock_predictor):
         import src.api
-        original = src.api.predictor
-        src.api.predictor = mock_predictor
+
+        original_predictors = src.api.predictors
+        src.api.predictors = {"efficientnet": mock_predictor}
         response = client.get("/health")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
-        assert data["model_loaded"] is True
-        src.api.predictor = original
+        assert "efficientnet" in data["models_loaded"]
+        src.api.predictors = original_predictors
 
     def test_classes_endpoint(self, client):
         response = client.get("/classes")
@@ -91,8 +98,11 @@ class TestHealthEndpoint:
 class TestPredictEndpoint:
     def test_predict_success(self, client, sample_image_bytes, mock_predictor):
         import src.api
-        original = src.api.predictor
-        src.api.predictor = mock_predictor
+
+        original_predictors = src.api.predictors
+        original_default = src.api.default_model
+        src.api.predictors = {"efficientnet": mock_predictor}
+        src.api.default_model = "efficientnet"
 
         response = client.post(
             "/predict",
@@ -105,52 +115,66 @@ class TestPredictEndpoint:
         assert "confidence" in data
         assert "class_probabilities" in data
         assert "risk_level" in data
-        src.api.predictor = original
+        src.api.predictors = original_predictors
+        src.api.default_model = original_default
 
     def test_predict_invalid_file_type(self, client, mock_predictor):
         import src.api
-        original = src.api.predictor
-        src.api.predictor = mock_predictor
+
+        original_predictors = src.api.predictors
+        original_default = src.api.default_model
+        src.api.predictors = {"efficientnet": mock_predictor}
+        src.api.default_model = "efficientnet"
 
         response = client.post(
             "/predict",
             files={"file": ("test.txt", b"not an image", "text/plain")},
         )
         assert response.status_code == 400
-        src.api.predictor = original
+        src.api.predictors = original_predictors
+        src.api.default_model = original_default
 
     def test_predict_no_model(self, client, sample_image_bytes):
         import src.api
-        original = src.api.predictor
-        src.api.predictor = None
+
+        original_predictors = src.api.predictors
+        src.api.predictors = {}
 
         response = client.post(
             "/predict",
             files={"file": ("test.jpg", sample_image_bytes, "image/jpeg")},
         )
         assert response.status_code == 503
-        src.api.predictor = original
+        src.api.predictors = original_predictors
 
     def test_predict_no_file(self, client, mock_predictor):
         import src.api
-        original = src.api.predictor
-        src.api.predictor = mock_predictor
+
+        original_predictors = src.api.predictors
+        original_default = src.api.default_model
+        src.api.predictors = {"efficientnet": mock_predictor}
+        src.api.default_model = "efficientnet"
 
         response = client.post("/predict")
         assert response.status_code == 422  # Validation error
-        src.api.predictor = original
+        src.api.predictors = original_predictors
+        src.api.default_model = original_default
 
     def test_predict_corrupt_image(self, client, mock_predictor):
         import src.api
-        original = src.api.predictor
-        src.api.predictor = mock_predictor
+
+        original_predictors = src.api.predictors
+        original_default = src.api.default_model
+        src.api.predictors = {"efficientnet": mock_predictor}
+        src.api.default_model = "efficientnet"
 
         response = client.post(
             "/predict",
             files={"file": ("test.jpg", b"corrupt data", "image/jpeg")},
         )
         assert response.status_code == 400
-        src.api.predictor = original
+        src.api.predictors = original_predictors
+        src.api.default_model = original_default
 
 
 class TestOpenAPIDoc:

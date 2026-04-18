@@ -21,7 +21,7 @@ class ViTModel(nn.Module):
         self,
         num_classes: int = 9,
         model_name: str = "vit_base_patch16_224",
-        freeze_backbone: bool = True,
+        freeze_backbone: bool = False,
         dropout_rate: float = 0.3,
     ):
         super().__init__()
@@ -36,7 +36,11 @@ class ViTModel(nn.Module):
         if freeze_backbone:
             # Freeze all transformer blocks except the last 2
             for name, param in self.backbone.named_parameters():
-                if "blocks.11" not in name and "blocks.10" not in name and "norm" not in name:
+                if (
+                    "blocks.11" not in name
+                    and "blocks.10" not in name
+                    and "norm" not in name
+                ):
                     param.requires_grad = False
 
         # Get feature dimension

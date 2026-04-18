@@ -80,7 +80,12 @@ def setup_prometheus(app):
 
 def track_prediction(predicted_class: str, confidence: float, latency: float):
     """Track a prediction in Prometheus metrics."""
-    risk_level = "HIGH" if predicted_class in {"melanoma", "basal cell carcinoma", "squamous cell carcinoma"} else "LOW"
+    risk_level = (
+        "HIGH"
+        if predicted_class
+        in {"melanoma", "basal cell carcinoma", "squamous cell carcinoma"}
+        else "LOW"
+    )
 
     PREDICTION_COUNTER.labels(
         predicted_class=predicted_class,
@@ -94,14 +99,20 @@ def track_prediction(predicted_class: str, confidence: float, latency: float):
     if confidence < 0.5:
         LOW_CONFIDENCE_COUNTER.inc()
 
-    if predicted_class in {"melanoma", "basal cell carcinoma", "squamous cell carcinoma"}:
+    if predicted_class in {
+        "melanoma",
+        "basal cell carcinoma",
+        "squamous cell carcinoma",
+    }:
         MALIGNANT_PREDICTIONS.labels(class_name=predicted_class).inc()
 
 
 def set_model_info(model_name: str, num_params: int, version: str = "1.0.0"):
     """Set model metadata in Prometheus."""
-    MODEL_INFO.info({
-        "model_name": model_name,
-        "num_parameters": str(num_params),
-        "version": version,
-    })
+    MODEL_INFO.info(
+        {
+            "model_name": model_name,
+            "num_parameters": str(num_params),
+            "version": version,
+        }
+    )

@@ -57,7 +57,6 @@
               ┌──────────────────┐
               │  MODEL TRAINING  │
               │  ┌──────────────┐│
-              │  │ Custom CNN   ││
               │  │ ResNet50     ││  ──▶  MLflow Tracking
               │  │ EfficientNet ││       (params, metrics,
               │  │ ViT-B/16     ││        artifacts)
@@ -96,12 +95,11 @@ Raw ISIC Images (JPEG) ───────────────────
     ├─▶ Load image paths + CSV labels
     ├─▶ Stratified split (85% train / 15% val)
     ├─▶ Training augmentation:
-    │     - Random crop (256 → 224)
+    │     - Random crop 
     │     - Horizontal/vertical flip
-    │     - Random rotation (±20°)
-    │     - Color jitter
+    │     - Random rotation
     │     - Random affine translation
-    ├─▶ ImageNet normalization (mean=[0.485,0.456,0.406])
+    ├─▶ ImageNet normalization 
     ├─▶ Weighted random sampling (class imbalance)
     └─▶ DataLoader (batch_size=32, pin_memory=True)
 ```
@@ -135,7 +133,6 @@ API Request ─▶ Prediction ─▶ Prometheus Metrics
 | Component | Responsibility | Key Interfaces |
 |-----------|---------------|----------------|
 | `data_pipeline.py` | Data loading, augmentation, splitting, class weights | `create_data_loaders()`, `validate_data_quality()`, `download_dataset()` |
-| `models/custom_cnn.py` | Custom CNN architecture | `forward()`, `get_feature_extractor()` |
 | `models/transfer_learning.py` | ResNet50 + EfficientNet | `forward()`, `get_target_layer()`, `unfreeze_all()` |
 | `models/vit_model.py` | Vision Transformer | `forward()`, `get_attention_maps()` |
 | `train.py` | Training loop with MLflow | `train_model()`, `train_all_models()` |
