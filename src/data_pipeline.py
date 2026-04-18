@@ -410,7 +410,8 @@ def create_data_loaders(
     use_weighted_sampling: bool = True,
     balance_classes: bool = True,
     samples_per_class: int = 1000,
-) -> Tuple[DataLoader, DataLoader, DataLoader, torch.Tensor]:
+    full_train: bool = False,
+) -> Tuple[DataLoader, Optional[DataLoader], DataLoader, torch.Tensor]:
     """
     Create train/val/test data loaders with preprocessing and augmentation.
 
@@ -421,18 +422,26 @@ def create_data_loaders(
         use_weighted_sampling: Use weighted random sampler
         balance_classes: Oversample minority classes with Augmentor
         samples_per_class: Target images per class when balancing
+        full_train: If True, use 100% of training data (no val split).
+                     val_loader will be None.
 
     Returns:
-        train_loader, val_loader, test_loader, class_weights
+        train_loader, val_loader (or None), test_loader, class_weights
     """
     data = load_train_test_split(data_dir)
     train_all_paths, train_all_labels = data["train_all"]
     test_paths, test_labels = data["test"]
 
-    # Split val BEFORE augmentation to avoid data leakage
-    splits = split_dataset(train_all_paths, train_all_labels)
-    train_paths, train_labels = splits["train"]
-    val_paths, val_labels = splits["val"]
+    if full_train:
+        # Use ALL training data, no validation split
+        train_paths, train_labels = train_all_paths, train_all_labels
+        val_paths, val_labels = None, None
+        logger.info("Full train mode: using 100%% of training data, no validation split")
+    else:
+        # Split val BEFORE augmentation to avoid data leakage
+        splits = split_dataset(train_all_paths, train_all_labels)
+        train_paths, train_labels = splits["train"]
+        val_paths, val_labels = splits["val"]
 
     # Balance only training set
     if balance_classes:
@@ -445,7 +454,7 @@ def create_data_loaders(
 
     # Create datasets with appropriate transforms
     train_dataset = ISICSkinDataset(train_paths, train_labels, get_transforms("train"))
-    val_dataset = ISICSkinDataset(val_paths, val_labels, get_transforms("val"))
+    val_dataset = ISICSkinDataset(val_paths, val_labels, get_transforms("val")) if val_paths else None
     test_dataset = ISICSkinDataset(test_paths, test_labels, get_transforms("test"))
 
     # Weighted sampling for training
@@ -466,13 +475,15 @@ def create_data_loaders(
         drop_last=True,
     )
 
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=pin,
-    )
+    val_loader = None
+    if val_dataset is not None:
+        val_loader = DataLoader(
+            val_dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=num_workers,
+            pin_memory=pin,
+        )
 
     test_loader = DataLoader(
         test_dataset,
@@ -485,7 +496,7 @@ def create_data_loaders(
     logger.info(
         f"DataLoaders created - "
         f"Train batches: {len(train_loader)}, "
-        f"Val batches: {len(val_loader)}, "
+        f"Val batches: {len(val_loader) if val_loader else 0}, "
         f"Test batches: {len(test_loader)}"
     )
 
