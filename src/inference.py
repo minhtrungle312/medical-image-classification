@@ -24,6 +24,74 @@ from src.train import get_model
 logger = logging.getLogger(__name__)
 
 
+def _normalize_state_dict_keys(state_dict, model):
+    """Normalize state_dict key prefixes to match the current model."""
+    if not isinstance(state_dict, dict):
+        return state_dict
+
+    model_keys = list(model.state_dict().keys())
+    if not model_keys:
+        return state_dict
+
+    model_prefixed = model_keys[0].startswith("backbone.")
+    state_prefixed = any(k.startswith("backbone.") for k in state_dict.keys())
+
+    if model_prefixed and not state_prefixed:
+        return {f"backbone.{k}": v for k, v in state_dict.items()}
+    if not model_prefixed and state_prefixed:
+        return {k.replace("backbone.", "", 1): v for k, v in state_dict.items()}
+    return state_dict
+
+
+def _filter_checkpoint_keys(state_dict, model):
+    """Filter checkpoint keys to only include those that match model architecture."""
+    model_keys = set(model.state_dict().keys())
+    filtered_state_dict = {}
+
+    for key, value in state_dict.items():
+        # Normalize key prefixes first
+        normalized_key = key
+        if not key.startswith("backbone.") and any(k.startswith("backbone.") for k in model_keys):
+            normalized_key = f"backbone.{key}"
+
+        # Only include keys that exist in model and have matching shapes
+        if normalized_key in model_keys:
+            model_param = model.state_dict()[normalized_key]
+            if value.shape == model_param.shape:
+                filtered_state_dict[normalized_key] = value
+            else:
+                logger.warning(f"Skipping {normalized_key}: shape mismatch {value.shape} vs {model_param.shape}")
+
+    return filtered_state_dict
+
+
+def _filter_checkpoint_keys(state_dict, model):
+    """Filter checkpoint keys to only include those that match model architecture."""
+    model_keys = set(model.state_dict().keys())
+    filtered_state_dict = {}
+
+    for key, value in state_dict.items():
+        # Normalize key prefixes first
+        normalized_key = key
+        if not key.startswith("backbone.") and any(k.startswith("backbone.") for k in model_keys):
+            normalized_key = f"backbone.{key}"
+
+        # Skip classifier layers if they don't match - we'll use random initialization
+        if "classifier" in normalized_key:
+            logger.info(f"Skipping classifier key {normalized_key} from checkpoint (shape mismatch)")
+            continue
+
+        # Only include keys that exist in model and have matching shapes
+        if normalized_key in model_keys:
+            model_param = model.state_dict()[normalized_key]
+            if value.shape == model_param.shape:
+                filtered_state_dict[normalized_key] = value
+            else:
+                logger.warning(f"Skipping {normalized_key}: shape mismatch {value.shape} vs {model_param.shape}")
+
+    return filtered_state_dict
+
+
 class SkinCancerPredictor:
     """Inference class for skin cancer classification."""
 
@@ -50,10 +118,22 @@ class SkinCancerPredictor:
 
         if checkpoint_path and os.path.exists(checkpoint_path):
             checkpoint = torch.load(
-                checkpoint_path, map_location=self.device, weights_only=True
+                checkpoint_path, map_location=self.device, weights_only=False
             )
-            self.model.load_state_dict(checkpoint["model_state_dict"])
-            logger.info(f"Loaded checkpoint from {checkpoint_path}")
+            if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
+                state_dict = checkpoint["model_state_dict"]
+            else:
+                state_dict = checkpoint
+            state_dict = _normalize_state_dict_keys(state_dict, self.model)
+            state_dict = _filter_checkpoint_keys(state_dict, self.model)
+            load_result = self.model.load_state_dict(state_dict, strict=False)
+            if load_result.missing_keys or load_result.unexpected_keys:
+                logger.warning(
+                    f"Loaded checkpoint from {checkpoint_path} with some mismatches: "
+                    f"missing={load_result.missing_keys}, unexpected={load_result.unexpected_keys}"
+                )
+            else:
+                logger.info(f"Loaded checkpoint from {checkpoint_path}")
         else:
             logger.warning("No checkpoint loaded. Using untrained model.")
 

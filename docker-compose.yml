@@ -71,14 +71,15 @@ services:
     container_name: skin-cancer-mlflow
     ports:
       - "5001:5000"
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=sqlite:////mlflow/mlflow.db
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=file:///mlflow/artifacts
     command: >
       bash -c "pip install mlflow && mlflow server
       --host 0.0.0.0
-      --port 5000
-      --backend-store-uri sqlite:///mlflow.db
-      --default-artifact-root /mlflow/artifacts"
+      --port 5000"
     volumes:
-      - mlflow_data:/mlflow
+      - ./mlruns:/mlflow
     restart: unless-stopped
     networks:
       - monitoring
