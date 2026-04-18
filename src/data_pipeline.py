@@ -417,13 +417,14 @@ def create_data_loaders(
     """
     data = load_train_test_split(data_dir)
     train_all_paths, train_all_labels = data["train_all"]
-    splits = split_dataset(train_all_paths, train_all_labels)
-
-    train_paths, train_labels = splits["train"]
-    val_paths, val_labels = splits["val"]
     test_paths, test_labels = data["test"]
 
-    # Balance training set by oversampling minority classes
+    # Split val BEFORE augmentation to avoid data leakage
+    splits = split_dataset(train_all_paths, train_all_labels)
+    train_paths, train_labels = splits["train"]
+    val_paths, val_labels = splits["val"]
+
+    # Balance only training set
     if balance_classes:
         train_paths, train_labels = _balance_classes(
             train_paths, train_labels, samples_per_class

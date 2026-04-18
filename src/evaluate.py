@@ -33,6 +33,10 @@ from sklearn.metrics import (
 from sklearn.preprocessing import label_binarize
 import mlflow
 
+# Set MLflow tracking URI
+MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5001")
+mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+
 from src.data_pipeline import (
     create_data_loaders,
     CLASS_NAMES,
@@ -320,7 +324,7 @@ def evaluate_all_models(
         data_dir, batch_size=batch_size, num_workers=num_workers
     )
 
-    model_names = ["custom_cnn", "resnet50", "efficientnet", "vit"]
+    model_names = ["resnet50", "efficientnet", "vit"]
     all_results = {}
 
     for model_name in model_names:

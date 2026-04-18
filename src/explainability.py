@@ -26,10 +26,7 @@ logger = logging.getLogger(__name__)
 
 def get_gradcam_target_layer(model: nn.Module, model_name: str):
     """Get the appropriate target layer for Grad-CAM based on model type."""
-    if model_name == "custom_cnn":
-        # Last conv block
-        return [model.block4[-4]]  # Last Conv2d in block4
-    elif model_name == "resnet50":
+    if model_name == "resnet50":
         return [model.backbone.layer4[-1]]
     elif model_name == "efficientnet":
         return [model.backbone.features[-1]]
@@ -53,7 +50,7 @@ def generate_gradcam(
 
     Args:
         model: Trained model
-        model_name: Model identifier ('custom_cnn', 'resnet50', 'efficientnet', 'vit')
+        model_name: Model identifier ('resnet50', 'efficientnet', 'vit')
         image_path: Path to input image
         target_class: Target class index (None = predicted class)
         output_path: Where to save the visualization

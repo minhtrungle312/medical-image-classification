@@ -35,7 +35,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Available model names (must match checkpoint filename pattern: {name}_best.pth)
-SUPPORTED_MODELS = ["custom_cnn", "resnet50", "efficientnet", "vit"]
+SUPPORTED_MODELS = ["resnet50", "efficientnet", "vit"]
 
 # Global predictors registry: model_name -> SkinCancerPredictor
 predictors: Dict[str, SkinCancerPredictor] = {}
@@ -77,7 +77,7 @@ app = FastAPI(
     title="Skin Cancer Classification API",
     description=(
         "REST API for classifying dermoscopic images of skin lesions.\n\n"
-        "Uses deep learning models (Custom CNN, ResNet50, EfficientNet, ViT) "
+        "Uses deep learning models (ResNet50, EfficientNet, ViT) "
         "trained on the ISIC Skin Cancer dataset to assist dermatologists "
         "in detecting potential malignancies.\n\n"
         "**Important**: This is a decision support tool, not a diagnostic device. "
@@ -174,7 +174,7 @@ async def list_models():
     description=(
         "Upload a dermoscopic image to classify the skin lesion type.\n\n"
         "Use the **model_name** query parameter to choose the model "
-        "(custom_cnn, resnet50, efficientnet, vit). "
+        "(resnet50, efficientnet, vit). "
         "Omit to use the server default.\n\n"
         "Supported classes (9):\n"
         "- **actinic keratosis**: Pre-malignant skin lesion\n"
@@ -192,7 +192,7 @@ async def predict(
     file: UploadFile = File(..., description="Dermoscopic image file (JPEG/PNG)"),
     model_name: Optional[str] = Query(
         default=None,
-        description="Model to use for prediction. Options: custom_cnn, resnet50, efficientnet, vit. Defaults to the server's default model.",
+        description="Model to use for prediction. Options: resnet50, efficientnet, vit. Defaults to the server's default model.",
     ),
 ):
     """Classify a dermoscopic skin lesion image."""

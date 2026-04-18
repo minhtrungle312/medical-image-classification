@@ -12,6 +12,7 @@ services:
     environment:
       - MODEL_NAME=efficientnet
       - CHECKPOINT_PATH=models/efficientnet_best.pth
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
     volumes:
       - ./models:/app/models:ro
     healthcheck:
@@ -69,7 +70,7 @@ services:
     image: python:3.12-slim
     container_name: skin-cancer-mlflow
     ports:
-      - "5000:5000"
+      - "5001:5000"
     command: >
       bash -c "pip install mlflow && mlflow server
       --host 0.0.0.0

@@ -1,6 +1,6 @@
 # 🏥 Medical Image Classification — Skin Cancer Detection
 
-![CI/CD](https://github.com/YOUR_ORG/medical-image-classification/actions/workflows/ci.yml/badge.svg)
+![CI/CD](https://github.com/tmt2504/medical-image-classification/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688)
@@ -90,16 +90,15 @@ We implement and compare **4 model architectures**:
 
 | Model | Architecture | Params | Pre-trained |
 |-------|-------------|--------|-------------|
-| **Custom CNN** | 4-block CNN from scratch | ~2M | No |
-| **ResNet50** | Transfer learning, fine-tune layer4 | ~25M | ImageNet |
-| **EfficientNet-B0** | Transfer learning, fine-tune classifier | ~5M | ImageNet |
-| **ViT-B/16** | Vision Transformer, fine-tune last 2 blocks | ~86M | ImageNet |
+| **ResNet50** | Transfer learning, full fine-tune | ~25M | ImageNet |
+| **EfficientNet-B0** | Transfer learning, full fine-tune | ~5M | ImageNet |
+| **ViT-B/16** | Vision Transformer, full fine-tune | ~86M | ImageNet |
 
 All models use:
 - **Loss**: Weighted CrossEntropyLoss (class imbalance handling)
 - **Optimizer**: Adam with weight decay
 - **Scheduler**: ReduceLROnPlateau
-- **Early Stopping**: patience=7
+- **Early Stopping**: patience=10
 
 ---
 
@@ -182,7 +181,6 @@ python3 -m src.train --model all --data-dir data --epochs 30
 ```
 
 ### Available models
-- `custom_cnn` — Custom CNN from scratch
 - `resnet50` — ResNet50 transfer learning
 - `efficientnet` — EfficientNet-B0 transfer learning
 - `vit` — Vision Transformer (ViT-B/16)
@@ -360,7 +358,7 @@ pytest tests/test_integration.py -v
 ## Responsible AI
 
 ### Explainability
-- **Grad-CAM** visualizations for CNN, ResNet50, and EfficientNet
+- **Grad-CAM** visualizations for ResNet50, and EfficientNet
 - **Attention maps** for Vision Transformer
 - See `src/explainability.py` for implementation
 
@@ -399,7 +397,6 @@ medical-image-classification/
 │   └── alert_rules.yml           # Alert rules
 ├── src/
 │   ├── models/
-│   │   ├── custom_cnn.py         # Custom CNN architecture
 │   │   ├── transfer_learning.py  # ResNet50 + EfficientNet
 │   │   └── vit_model.py          # Vision Transformer
 │   ├── api.py                    # FastAPI REST API

@@ -1,8 +1,7 @@
 """
 Training script with MLflow experiment tracking and early stopping.
 
-Supports training all three model architectures:
-- Custom CNN
+Supports training three model architectures:
 - Transfer Learning (ResNet50, EfficientNet-B0)
 - Vision Transformer (ViT)
 """
@@ -22,10 +21,13 @@ from torch.utils.data import DataLoader
 import mlflow
 import mlflow.pytorch
 import numpy as np
+
+# Set MLflow tracking URI (default to local mlruns if not set)
+MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5001")
+mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, fbeta_score
 
 from src.data_pipeline import create_data_loaders, NUM_CLASSES
-from src.models.custom_cnn import CustomCNN
 from src.models.transfer_learning import ResNet50Model, EfficientNetModel
 from src.models.vit_model import ViTModel
 
@@ -63,7 +65,6 @@ class EarlyStopping:
 def get_model(model_name: str, num_classes: int = NUM_CLASSES) -> nn.Module:
     """Factory function to create model by name."""
     models_map = {
-        "custom_cnn": lambda: CustomCNN(num_classes=num_classes),
         "resnet50": lambda: ResNet50Model(num_classes=num_classes),
         "efficientnet": lambda: EfficientNetModel(num_classes=num_classes),
         "vit": lambda: ViTModel(num_classes=num_classes),
@@ -160,7 +161,7 @@ def train_model(
     Full training pipeline with MLflow tracking.
 
     Args:
-        model_name: One of 'custom_cnn', 'resnet50', 'efficientnet', 'vit'
+        model_name: One of 'resnet50', 'efficientnet', 'vit'
         data_dir: Path to ISIC dataset
         output_dir: Directory to save trained models
         epochs: Maximum number of training epochs
@@ -317,10 +318,12 @@ def train_all_models(
     output_dir: str = "models",
     epochs: int = 30,
     batch_size: int = 32,
-    learning_rate: float = 1e-4,
+    learning_rate: float = None,
 ) -> Dict[str, Dict[str, float]]:
     """Train all models and return their metrics for comparison."""
-    model_names = ["custom_cnn", "resnet50", "efficientnet", "vit"]
+    model_names = ["resnet50", "efficientnet", "vit"]
+    # Per-model learning rates for full fine-tuning
+    lr_map = {"resnet50": 1e-4, "efficientnet": 1e-4, "vit": 5e-5}
     results = {}
 
     for model_name in model_names:
@@ -328,13 +331,15 @@ def train_all_models(
         logger.info(f"Training model: {model_name}")
         logger.info(f"{'='*60}\n")
 
+        lr = learning_rate if learning_rate is not None else lr_map.get(model_name, 1e-4)
+
         _, metrics = train_model(
             model_name=model_name,
             data_dir=data_dir,
             output_dir=output_dir,
             epochs=epochs,
             batch_size=batch_size,
-            learning_rate=learning_rate,
+            learning_rate=lr,
         )
         results[model_name] = metrics
 
@@ -344,7 +349,7 @@ def train_all_models(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train skin cancer classification models")
     parser.add_argument("--model", type=str, default="all",
-                        choices=["custom_cnn", "resnet50", "efficientnet", "vit", "all"],
+                        choices=["resnet50", "efficientnet", "vit", "all"],
                         help="Model to train")
     parser.add_argument("--data-dir", type=str, default="data", help="Path to ISIC dataset")
     parser.add_argument("--output-dir", type=str, default="models", help="Output directory")
